@@ -2,7 +2,7 @@
 from dotenv import load_dotenv
 # Load default environment variables (.env)
 load_dotenv()
-
+import subprocess
 import os
 import time
 import logging
@@ -484,16 +484,20 @@ def execution_agent(objective: str, task: str) -> str:
 
     """
     
+    print(f"objective: {objective}")
     context = context_agent(query=objective, top_results_num=5)
     # print("\n*******RELEVANT CONTEXT******\n")
     # print(context)
     # print('')
     prompt = f'Perform one task based on the following objective: {objective}.\n'
     if context:
-        prompt += 'Take into account these previously completed tasks:' + '\n'.join(context)\
+        prompt += 'Take into account these previously completed tasks:' + '\n'.join(context)
 
+    prompt += "If you need to indicate something that needs to be executed in a terminal, use the following format to indicate you want to open a terminal to execute code: TERMINAL: code to be executed. Do not write anything TERMINAL: that is not valid code that can be executed in a windows terminal. Do not include anything except that TERMINAL: indicator and the code.\n"
     prompt += f'\nYour task: {task}\nResponse:'
-    return openai_call(prompt, max_tokens=2000)
+    response = openai_call(prompt, max_tokens=2000)
+    print("RESPONSE\033[91m" + response + "\033[0m") # set color to bright red
+    return response
 
 
 # Get the top n completed tasks for the objective
