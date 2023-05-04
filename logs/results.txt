@@ -1,0 +1,6 @@
+Try finding 2+2(5*5)/2, math01, 1, FAILURE
+Calculate the square root of 256., math02, 1, FAILURE
+Solve for x: 3x - 4 = 2x + 10., math03, 5, FAILURE
+Find the perimeter of a rectangle with length 6 cm and width 8 cm., math04, 3, FAILURE
+What is the slope of the line that passes through the points (2, 5) and (4, 9)?, math05, 5, FAILURE
+Simplify the expression: (2x^2 + 3x - 5) - (3x^2 - 2x + 1)., math06, 5, FAILURE

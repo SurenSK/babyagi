@@ -1,10 +1,14 @@
+from dotenv import dotenv_values, set_key, load_dotenv
+import subprocess
+import os
+from time import sleep
 runs = [
-        ("Try finding 2+2(5*5)/2", "math01", "5"),
-        ("Calculate the square root of 256.", "math02", "5"),
-        ("Solve for x: 3x - 4 = 2x + 10.", "math03", "5"),
-        ("Find the perimeter of a rectangle with length 6 cm and width 8 cm.", "math04", "3"),
-        ("What is the slope of the line that passes through the points (2, 5) and (4, 9)?", "math05", "5"),
-        ("Simplify the expression: (2x^2 + 3x - 5) - (3x^2 - 2x + 1).", "math06", "5"),
+        # ("Try finding 2+2(5*5)/2", "math01", "1"),
+        # ("Calculate the square root of 256.", "math02", "1"),
+        # ("Solve for x: 3x - 4 = 2x + 10.", "math03", "5"),
+        # ("Find the perimeter of a rectangle with length 6 cm and width 8 cm.", "math04", "3"),
+        # ("What is the slope of the line that passes through the points (2, 5) and (4, 9)?", "math05", "5"),
+        # ("Simplify the expression: (2x^2 + 3x - 5) - (3x^2 - 2x + 1).", "math06", "5"),
         ("Evaluate the integral of 3x^2 + 2x + 1 with respect to x.", "math07", "5"),
         ("Create a new text file named 'example.txt' and write the string 'Hello, World!' to it.", "file01", "5"),
         ("Read the contents of a file named 'data.csv' and parse it into a list of dictionaries, where each dictionary represents a row of data.", "file02", "10"),
@@ -61,7 +65,27 @@ runs = [
         ("Pretend you are a language expert. Build a language learning app that uses AI-powered chatbots to simulate real-life conversation. Make sure you can reason through the solution step by step.", "app02rc", "20")
     ]
 
-c=0
-for _,_,i in runs:
-    c+=i
-print(c)
+for objective, logName, iters in runs:
+    os.environ["OBJECTIVE"] = objective
+    os.environ["LOGNAME"] = logName
+    os.environ["ITERS"] = str(iters)
+    print(f"Running with {logName} for {iters} iterations...")
+
+    # Call babyagi.py and wait for it to finish
+    env_vars = {**os.environ}
+    subprocess.run(["python", "babyagi.py"], env=env_vars)
+
+    with open(f"logs/{logName}.log", "r") as f:
+        lines = f.readlines()
+    last_line = lines[-1].strip()
+
+    if "ITERS EXHAUSTED" in last_line:
+        res = "FAILURE"
+    elif "OBJECTIVE ACCOMPLISHED" in last_line:
+        res = "SUCCESS"
+    else:
+        res = "REFER TO LOG"
+
+    # Write objective, logName, iters, success to a file
+    with open("logs/results.txt", "a") as f:
+        f.write(f"{objective}, {logName}, {iters}, {res}\n")

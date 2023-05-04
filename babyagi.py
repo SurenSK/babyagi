@@ -20,6 +20,7 @@ import re
 from chromadb.config import Settings
 client = chromadb.Client(Settings(anonymized_telemetry=False))
 
+import logging
 
 # Engine configuration
 
@@ -44,8 +45,22 @@ JOIN_EXISTING_OBJECTIVE = False
 OBJECTIVE = os.getenv("OBJECTIVE", "")
 INITIAL_TASK = os.getenv("INITIAL_TASK", os.getenv("FIRST_TASK", ""))
 
+LOGNAME = os.getenv("LOGNAME", "").replace(" ","_")
+log_filename = f'logs/{LOGNAME}.log'
+
+print(f"Log file name: {log_filename}")
+print(f"Log file location: {os.path.abspath(log_filename)}")
+logging.basicConfig(filename=f'logs/{LOGNAME}.log', level=logging.INFO)
+# logging file name
+
+
+def printToLog(message, level=logging.INFO):
+    # print(message)
+    logging.log(level, message)
+
 # Model configuration
 OPENAI_TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", 0.0))
+
 
 # Extensions support begin
 
@@ -89,10 +104,10 @@ if DOTENV_EXTENSIONS:
 
 # Extensions support end
 
-print("\033[95m\033[1m" + "\n*****CONFIGURATION*****\n" + "\033[0m\033[0m")
-print(f"Name  : {INSTANCE_NAME}")
-print(f"Mode  : {'alone' if COOPERATIVE_MODE in ['n', 'none'] else 'local' if COOPERATIVE_MODE in ['l', 'local'] else 'distributed' if COOPERATIVE_MODE in ['d', 'distributed'] else 'undefined'}")
-print(f"LLM   : {LLM_MODEL}")
+printToLog("\033[95m\033[1m" + "\n*****CONFIGURATION*****\n" + "\033[0m\033[0m")
+printToLog(f"Name  : {INSTANCE_NAME}")
+printToLog(f"Mode  : {'alone' if COOPERATIVE_MODE in ['n', 'none'] else 'local' if COOPERATIVE_MODE in ['l', 'local'] else 'distributed' if COOPERATIVE_MODE in ['d', 'distributed'] else 'undefined'}")
+printToLog(f"LLM   : {LLM_MODEL}")
 
 
 # Check if we know what we are doing
@@ -104,7 +119,7 @@ if LLM_MODEL.startswith("llama"):
     if can_import("llama_cpp"):
         from llama_cpp import Llama
 
-        print(f"LLAMA : {LLAMA_MODEL_PATH}" + "\n")
+        printToLog(f"LLAMA : {LLAMA_MODEL_PATH}" + "\n")
         assert os.path.exists(LLAMA_MODEL_PATH), "\033[91m\033[1m" + f"Model can't be found." + "\033[0m\033[0m"
 
         CTX_MAX = 2048
@@ -125,13 +140,13 @@ if LLM_MODEL.startswith("llama"):
             use_mlock=True,
         )
 
-        print(
+        printToLog(
             "\033[91m\033[1m"
             + "\n*****USING LLAMA.CPP. POTENTIALLY SLOW.*****"
             + "\033[0m\033[0m"
         )
     else:
-        print(
+        printToLog(
             "\033[91m\033[1m"
             + "\nLlama LLM requires package llama-cpp. Falling back to GPT-3.5-turbo."
             + "\033[0m\033[0m"
@@ -139,30 +154,29 @@ if LLM_MODEL.startswith("llama"):
         LLM_MODEL = "gpt-3.5-turbo"
 
 if LLM_MODEL.startswith("gpt-4"):
-    print(
+    printToLog(
         "\033[91m\033[1m"
         + "\n*****USING GPT-4. POTENTIALLY EXPENSIVE. MONITOR YOUR COSTS*****"
         + "\033[0m\033[0m"
     )
 
 if LLM_MODEL.startswith("human"):
-    print(
+    printToLog(
         "\033[91m\033[1m"
         + "\n*****USING HUMAN INPUT*****"
         + "\033[0m\033[0m"
     )
 
-print("\033[94m\033[1m" + "\n*****OBJECTIVE*****\n" + "\033[0m\033[0m")
-print(f"{OBJECTIVE}")
+printToLog("\033[94m\033[1m" + "\n*****OBJECTIVE*****\n" + "\033[0m\033[0m")
+printToLog(f"{OBJECTIVE}")
 
 if not JOIN_EXISTING_OBJECTIVE:
-    print("\033[93m\033[1m" + "\nInitial task:" + "\033[0m\033[0m" + f" {INITIAL_TASK}")
+    printToLog("\033[93m\033[1m" + "\nInitial task:" + "\033[0m\033[0m" + f" {INITIAL_TASK}")
 else:
-    print("\033[93m\033[1m" + f"\nJoining to help the objective" + "\033[0m\033[0m")
+    printToLog("\033[93m\033[1m" + f"\nJoining to help the objective" + "\033[0m\033[0m")
 
 # Configure OpenAI
 openai.api_key = OPENAI_API_KEY
-
 
 # Llama embedding function
 class LlamaEmbeddingFunction(EmbeddingFunction):
@@ -244,7 +258,7 @@ def try_weaviate():
     if (WEAVIATE_URL or WEAVIATE_USE_EMBEDDED) and can_import("extensions.weaviate_storage"):
         WEAVIATE_API_KEY = os.getenv("WEAVIATE_API_KEY", "")
         from extensions.weaviate_storage import WeaviateResultsStorage
-        print("\nUsing results storage: " + "\033[93m\033[1m" + "Weaviate" + "\033[0m\033[0m")
+        printToLog("\nUsing results storage: " + "\033[93m\033[1m" + "Weaviate" + "\033[0m\033[0m")
         return WeaviateResultsStorage(OPENAI_API_KEY, WEAVIATE_URL, WEAVIATE_API_KEY, WEAVIATE_USE_EMBEDDED, LLM_MODEL, LLAMA_MODEL_PATH, RESULTS_STORE_NAME, OBJECTIVE)
     return None
 
@@ -256,12 +270,12 @@ def try_pinecone():
             PINECONE_ENVIRONMENT
         ), "\033[91m\033[1m" + "PINECONE_ENVIRONMENT environment variable is missing from .env" + "\033[0m\033[0m"
         from extensions.pinecone_storage import PineconeResultsStorage
-        print("\nUsing results storage: " + "\033[93m\033[1m" + "Pinecone" + "\033[0m\033[0m")
+        printToLog("\nUsing results storage: " + "\033[93m\033[1m" + "Pinecone" + "\033[0m\033[0m")
         return PineconeResultsStorage(OPENAI_API_KEY, PINECONE_API_KEY, PINECONE_ENVIRONMENT, LLM_MODEL, LLAMA_MODEL_PATH, RESULTS_STORE_NAME, OBJECTIVE)
     return None
 
 def use_chroma():
-    print("\nUsing results storage: " + "\033[93m\033[1m" + "Chroma (Default)" + "\033[0m\033[0m")
+    printToLog("\nUsing results storage: " + "\033[93m\033[1m" + "Chroma (Default)" + "\033[0m\033[0m")
     return DefaultResultsStorage()
 
 results_storage = try_weaviate() or try_pinecone() or use_chroma()
@@ -301,7 +315,7 @@ if COOPERATIVE_MODE in ['l', 'local']:
         sys.path.append(str(Path(__file__).resolve().parent))
         from extensions.ray_tasks import CooperativeTaskListStorage
         tasks_storage = CooperativeTaskListStorage(OBJECTIVE)
-        print("\nReplacing tasks storage: " + "\033[93m\033[1m" + "Ray" + "\033[0m\033[0m")
+        printToLog("\nReplacing tasks storage: " + "\033[93m\033[1m" + "Ray" + "\033[0m\033[0m")
 elif COOPERATIVE_MODE in ['d', 'distributed']:
     pass
 
@@ -362,32 +376,32 @@ def openai_call(
                 )
                 return response.choices[0].message.content.strip()
         except openai.error.RateLimitError:
-            print(
+            printToLog(
                 "   *** The OpenAI API rate limit has been exceeded. Waiting 10 seconds and trying again. ***"
             )
             time.sleep(10)  # Wait 10 seconds and try again
         except openai.error.Timeout:
-            print(
+            printToLog(
                 "   *** OpenAI API timeout occurred. Waiting 10 seconds and trying again. ***"
             )
             time.sleep(10)  # Wait 10 seconds and try again
         except openai.error.APIError:
-            print(
+            printToLog(
                 "   *** OpenAI API error occurred. Waiting 10 seconds and trying again. ***"
             )
             time.sleep(10)  # Wait 10 seconds and try again
         except openai.error.APIConnectionError:
-            print(
+            printToLog(
                 "   *** OpenAI API connection error occurred. Check your network settings, proxy configuration, SSL certificates, or firewall rules. Waiting 10 seconds and trying again. ***"
             )
             time.sleep(10)  # Wait 10 seconds and try again
         except openai.error.InvalidRequestError:
-            print(
+            printToLog(
                 "   *** OpenAI API invalid request. Check the documentation for the specific API method you are calling and make sure you are sending valid and complete parameters. Waiting 10 seconds and trying again. ***"
             )
             time.sleep(10)  # Wait 10 seconds and try again
         except openai.error.ServiceUnavailableError:
-            print(
+            printToLog(
                 "   *** OpenAI API service unavailable. Waiting 10 seconds and trying again. ***"
             )
             time.sleep(10)  # Wait 10 seconds and try again
@@ -419,9 +433,9 @@ Return all the new tasks, with one task per line in your response. The result mu
 The number of each entry must be followed by a period.
 Do not include any headers before your numbered list. Do not follow your numbered list with any other output."""
 
-    print(f'\n************** TASK CREATION AGENT PROMPT *************\n{prompt}\n')
+    printToLog(f'\n************** TASK CREATION AGENT PROMPT *************\n{prompt}\n')
     response = openai_call(prompt, max_tokens=2000)
-    print(f'\n************* TASK CREATION AGENT RESPONSE ************\n{response}\n')
+    printToLog(f'\n************* TASK CREATION AGENT RESPONSE ************\n{response}\n')
     new_tasks = response.split('\n')
     new_tasks_list = []
     for task_string in new_tasks:
@@ -431,7 +445,7 @@ Do not include any headers before your numbered list. Do not follow your numbere
             task_name = re.sub(r'[^\w\s_]+', '', task_parts[1]).strip()
             if task_name.strip() and task_id.isnumeric():
                 new_tasks_list.append(task_name)
-            # print('New task created: ' + task_name)
+            # printToLog('New task created: ' + task_name)
 
     out = [{"task_name": task_name} for task_name in new_tasks_list]
     return out
@@ -454,9 +468,9 @@ Do not remove any tasks. Return the result as a numbered list in the format:
 The entries are consecutively numbered, starting with 1. The number of each entry must be followed by a period.
 Do not include any headers before your numbered list. Do not follow your numbered list with any other output."""
 
-    print(f'\n************** TASK PRIORITIZATION AGENT PROMPT *************\n{prompt}\n')
+    printToLog(f'\n************** TASK PRIORITIZATION AGENT PROMPT *************\n{prompt}\n')
     response = openai_call(prompt, max_tokens=2000)
-    print(f'\n************* TASK PRIORITIZATION AGENT RESPONSE ************\n{response}\n')
+    printToLog(f'\n************* TASK PRIORITIZATION AGENT RESPONSE ************\n{response}\n')
     new_tasks = response.split("\n") if "\n" in response else [response]
     new_tasks_list = []
     for task_string in new_tasks:
@@ -484,19 +498,19 @@ def execution_agent(objective: str, task: str) -> str:
 
     """
     
-    print(f"objective: {objective}")
+    printToLog(f"objective: {objective}")
     context = context_agent(query=objective, top_results_num=5)
-    # print("\n*******RELEVANT CONTEXT******\n")
-    # print(context)
-    # print('')
+    # printToLog("\n*******RELEVANT CONTEXT******\n")
+    # printToLog(context)
+    # printToLog('')
     prompt = f'Perform one task based on the following objective: {objective}.\n'
     if context:
         prompt += 'Take into account these previously completed tasks:' + '\n'.join(context)
 
-    prompt += "If you need to indicate something that needs to be executed in a terminal, use the following format to indicate you want to open a terminal to execute code: TERMINAL: code to be executed. Do not write anything TERMINAL: that is not valid code that can be executed in a windows terminal. Do not include anything except that TERMINAL: indicator and the code.\n"
+    # prompt += "If you need to indicate something that needs to be executed in a terminal, use the following format to indicate you want to open a terminal to execute code: TERMINAL: code to be executed. Do not write anything TERMINAL: that is not valid code that can be executed in a windows terminal. Do not include anything except that TERMINAL: indicator and the code.\n"
     prompt += f'\nYour task: {task}\nResponse:'
     response = openai_call(prompt, max_tokens=2000)
-    print("RESPONSE\033[91m" + response + "\033[0m") # set color to bright red
+    printToLog("RESPONSE\033[91m" + response + "\033[0m") # set color to bright red
     return response
 
 
@@ -514,8 +528,8 @@ def context_agent(query: str, top_results_num: int):
 
     """
     results = results_storage.query(query=query, top_results_num=top_results_num)
-    # print("***** RESULTS *****")
-    # print(results)
+    # printToLog("***** RESULTS *****")
+    # printToLog(results)
     return results
 
 
@@ -529,24 +543,28 @@ if not JOIN_EXISTING_OBJECTIVE:
 
 
 def main():
+    ITERS= int(os.getenv("ITERS", 1))
     loop = True
-    while loop:
-        # As long as there are tasks in the storage...
+    while ITERS!=0:
+        ITERS-=1
+        printToLog(f"ITERS REMAINING: {ITERS}")
+        print(f"ITERS REMAINING: {ITERS}")
+        # # As long as there are tasks in the storage...
         if not tasks_storage.is_empty():
             # Print the task list
-            print("\033[95m\033[1m" + "\n*****TASK LIST*****\n" + "\033[0m\033[0m")
+            printToLog("\033[95m\033[1m" + "\n*****TASK LIST*****\n" + "\033[0m\033[0m")
             for t in tasks_storage.get_task_names():
-                print(" • " + str(t))
+                printToLog(" • " + str(t))
 
             # Step 1: Pull the first incomplete task
             task = tasks_storage.popleft()
-            print("\033[92m\033[1m" + "\n*****NEXT TASK*****\n" + "\033[0m\033[0m")
-            print(str(task["task_name"]))
+            printToLog("\033[92m\033[1m" + "\n*****NEXT TASK*****\n" + "\033[0m\033[0m")
+            printToLog(str(task["task_name"]))
 
             # Send to execution function to complete the task based on the context
             result = execution_agent(OBJECTIVE, str(task["task_name"]))
-            print("\033[93m\033[1m" + "\n*****TASK RESULT*****\n" + "\033[0m\033[0m")
-            print(result)
+            printToLog("\033[93m\033[1m" + "\n*****TASK RESULT*****\n" + "\033[0m\033[0m")
+            printToLog(result)
 
             # Step 2: Enrich result and store in the results storage
             # This is where you should enrich the result if needed
@@ -570,10 +588,10 @@ def main():
                 tasks_storage.get_task_names(),
             )
 
-            print('Adding new tasks to task_storage')
+            printToLog('Adding new tasks to task_storage')
             for new_task in new_tasks:
                 new_task.update({"task_id": tasks_storage.next_task_id()})
-                print(str(new_task))
+                printToLog(str(new_task))
                 tasks_storage.append(new_task)
 
             if not JOIN_EXISTING_OBJECTIVE: prioritization_agent()
@@ -581,8 +599,10 @@ def main():
         # Sleep a bit before checking the task list again
             time.sleep(5)
         else:
-            print('Done.')
+            printToLog('OBJECTIVE ACCOMPLISHED')
             loop = False
+    if ITERS==0:
+        printToLog('ITERS EXHAUSTED')
 
 
 if __name__ == "__main__":
